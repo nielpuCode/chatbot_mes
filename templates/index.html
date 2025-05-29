@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Manufacture Bot</title>
+
+  <!-- TailwindCSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Font: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <!-- Markdown parser -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #F3F4F6; /* light gray */
+    }
+    .chat-container {
+      background: white;
+      border-radius: 1rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .chat-header {
+      border-bottom: 1px solid #E5E7EB;
+    }
+    .chat-window {
+      background: #FAFAFA;
+    }
+    .bubble-human {
+      background-color: #2563EB; /* blue-600 */
+      color: white;
+    }
+    .bubble-ai {
+      background-color: #E5E7EB; /* gray-200 */
+      color: #111827;            /* gray-900 */
+    }
+    .input-area {
+      border-top: 1px solid #E5E7EB;
+    }
+    /* minimal scrollbar */
+    .chat-window::-webkit-scrollbar {
+      width: 4px;
+    }
+    .chat-window::-webkit-scrollbar-thumb {
+      background: #CBD5E0; /* gray-300 */
+      border-radius: 2px;
+    }
+    .chat-window::-webkit-scrollbar-track {
+      background: transparent;
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center h-screen p-4">
+
+  <div class="chat-container flex flex-col w-[90%] h-full max-h-[800px]">
+    
+    <!-- Header -->
+    <div class="chat-header px-6 py-4 flex items-center justify-between bg-white">
+      <h1 class="text-xl font-semibold text-gray-800">Model Bot</h1>
+      <!-- You can add a theme toggle or logo here -->
+    </div>
+
+    <!-- Chat Window -->
+    <div id="chatWindow" class="chat-window flex-1 px-6 py-4 overflow-y-auto space-y-4">
+      {% for msg in messages %}
+        {% if msg.type == 'human' %}
+          <div class="flex justify-end">
+            <div class="max-w-[75%] px-4 py-2 bubble-human rounded-2xl rounded-br-none">
+              <div class="markdown-content">{{ msg.content }}</div>
+            </div>
+          </div>
+        {% else %}
+          <div class="flex justify-start">
+            <div class="max-w-[75%] px-4 py-2 bubble-ai rounded-2xl rounded-bl-none">
+              <div class="markdown-content">{{ msg.content }}</div>
+            </div>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area px-4 py-3 bg-white flex items-center space-x-3">
+      <input
+        id="queryInput"
+        type="text"
+        placeholder="Type your message…"
+        class="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-400"
+      />
+      <button id="sendBtn" class="relative p-2 bg-blue-600 rounded-full hover:bg-blue-500 focus:outline-none">
+        <svg
+          id="sendIcon"
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-5 w-5 text-white"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 10l9-7 9 7-9 7-9-7z" />
+        </svg>
+        <!-- spinner -->
+        <svg
+          id="spinner"
+          class="hidden absolute inset-0 m-auto h-5 w-5 animate-spin text-white"
+          xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+        >
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // Convert all initial server‐rendered bubbles from Markdown → HTML
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.markdown-content').forEach(el => {
+        const raw = el.textContent;
+        el.innerHTML = marked.parse(raw);
+      });
+    });
+
+    const chatWindow = document.getElementById('chatWindow');
+    const input      = document.getElementById('queryInput');
+    const sendBtn    = document.getElementById('sendBtn');
+    const sendIcon   = document.getElementById('sendIcon');
+    const spinner    = document.getElementById('spinner');
+
+    function scrollToBottom() {
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    sendBtn.addEventListener('click', async () => {
+      const query = input.value.trim();
+      if (!query) return;
+
+      // echo user
+      const userDiv = document.createElement('div');
+      userDiv.className = 'flex justify-end';
+      userDiv.innerHTML = `
+        <div class="max-w-[75%] px-4 py-2 bubble-human rounded-2xl rounded-br-none">
+          ${query}
+        </div>`;
+      chatWindow.append(userDiv);
+
+      input.value = '';
+      sendIcon.classList.add('hidden');
+      spinner.classList.remove('hidden');
+      scrollToBottom();
+
+      // placeholder
+      const botWrapper = document.createElement('div');
+      botWrapper.className = 'flex justify-start';
+      const botBubble = document.createElement('div');
+      botBubble.className = 'max-w-[75%] px-4 py-2 bubble-ai rounded-2xl rounded-bl-none blink';
+      botBubble.textContent = 'Thinking…';
+      botWrapper.append(botBubble);
+      chatWindow.append(botWrapper);
+      scrollToBottom();
+
+      // animate placeholder
+      const phases = ['Thinking…','Generating…','Almost there…'];
+      let idx = 0;
+      const phaseTimer = setInterval(() => {
+        idx = (idx + 1) % phases.length;
+        botBubble.textContent = phases[idx];
+      }, 1000);
+
+      try {
+        const res = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query })
+        });
+        const { answer, duration } = await res.json();
+
+        clearInterval(phaseTimer);
+        botBubble.classList.remove('blink');
+
+        // render Markdown → HTML
+        const htmlAnswer = marked.parse(answer);
+
+        botBubble.innerHTML = `
+          <div>${htmlAnswer}</div>
+          <div class="mt-1 text-xs text-gray-500">(Duration: ${duration.toFixed(2)}s)</div>
+        `;
+        scrollToBottom();
+
+      } catch (err) {
+        clearInterval(phaseTimer);
+        botBubble.classList.remove('blink');
+        botBubble.textContent = '❌ Something went wrong…';
+        console.error(err);
+      } finally {
+        sendIcon.classList.remove('hidden');
+        spinner.classList.add('hidden');
+      }
+    });
+
+    // send on Enter
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendBtn.click();
+      }
+    });
+  </script>
+
+</body>
+</html>
